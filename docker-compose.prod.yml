@@ -40,8 +40,14 @@ services:
       TIME_ZONE: Europe/Berlin
       DB_HOST: postgres
       DB_PORT: "5432"
+      # user-api's main.go reads DB_USER / DB_PASSWORD / DB_NAME. The test env
+      # and api-config use DB_USERNAME / DB_DATABASE, so both names are set
+      # here to keep the container happy regardless of which code path reads
+      # them. Migration step uses DATABASE_URL below.
+      DB_USER: ${POSTGRES_USER}
       DB_USERNAME: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
       DB_DATABASE: ${POSTGRES_DB}
       SSL_MODE: disable
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable

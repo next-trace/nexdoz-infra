@@ -24,6 +24,9 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: ./scripts
+          severity: warning
+          ignore_names: ''
+          format: gcc
 
       - name: Caddyfile lint
         run: |

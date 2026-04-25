@@ -1,17 +1,17 @@
-# DiaBuddy production stack — single DO droplet deployment.
+# Nexdoz production stack — single DO droplet deployment.
 #
 # Services: caddy (public-facing TLS proxy), user-api (Go backend),
 #           postgres (data), web (Next.js frontend).
 #
 # Only caddy is exposed on the public internet (ports 80/443).
-# All other services communicate on the internal `diabuddy_net` bridge.
+# All other services communicate on the internal `nexdoz_net` bridge.
 
-name: diabuddy
+name: nexdoz
 
 services:
   caddy:
     image: caddy:2-alpine
-    container_name: diabuddy-caddy
+    container_name: nexdoz-caddy
     restart: unless-stopped
     ports:
       - "80:80"
@@ -29,11 +29,11 @@ services:
       web:
         condition: service_healthy
     networks:
-      - diabuddy_net
+      - nexdoz_net
 
   user-api:
-    image: ghcr.io/next-trace/diabuddy-user-api:${USER_API_VERSION:-latest}
-    container_name: diabuddy-user-api
+    image: ghcr.io/next-trace/nexdoz-user-api:${USER_API_VERSION:-latest}
+    container_name: nexdoz-user-api
     restart: unless-stopped
     environment:
       APP_ENV: production
@@ -84,11 +84,11 @@ services:
       retries: 10
       start_period: 15s
     networks:
-      - diabuddy_net
+      - nexdoz_net
 
   web:
-    image: ghcr.io/next-trace/diabuddy-web:${WEB_VERSION:-latest}
-    container_name: diabuddy-web
+    image: ghcr.io/next-trace/nexdoz-web:${WEB_VERSION:-latest}
+    container_name: nexdoz-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -105,11 +105,11 @@ services:
       retries: 10
       start_period: 20s
     networks:
-      - diabuddy_net
+      - nexdoz_net
 
   postgres:
     image: postgres:16-alpine
-    container_name: diabuddy-postgres
+    container_name: nexdoz-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -123,10 +123,10 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - diabuddy_net
+      - nexdoz_net
 
 networks:
-  diabuddy_net:
+  nexdoz_net:
     driver: bridge
 
 volumes:

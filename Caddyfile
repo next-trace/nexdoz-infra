@@ -1,4 +1,4 @@
-# DiaBuddy production Caddyfile.
+# Nexdoz production Caddyfile.
 # Auto-provisions Let's Encrypt TLS certificates using HTTP-01 challenge.
 # Requires droplet reachable on :80 and :443 + correct DNS A records.
 

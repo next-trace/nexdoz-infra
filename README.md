@@ -1,6 +1,6 @@
-# diabuddy-infra
+# nexdoz-infra
 
-Deployment infrastructure for DiaBuddy on DigitalOcean EU.
+Deployment infrastructure for Nexdoz on DigitalOcean EU.
 
 One public repo, four moving parts:
 - `docker-compose.prod.yml` — the production stack (Caddy, user-api, web, Postgres)
@@ -17,31 +17,31 @@ One public repo, four moving parts:
    - (Optional) apex `yourdomain.example` → DROPLET_IP for the redirect to app.
 3. **Create an SSH keypair** for deployment (separate from your personal key):
    ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/diabuddy_deploy -N ""
+   ssh-keygen -t ed25519 -f ~/.ssh/nexdoz_deploy -N ""
    ```
 4. **Run provision.sh on the fresh droplet** (adds your deploy key, hardens SSH, installs docker, clones this repo):
    ```bash
    scp scripts/provision.sh root@DROPLET_IP:/root/
    ssh root@DROPLET_IP \
-     "DEPLOY_PUBKEY='$(cat ~/.ssh/diabuddy_deploy.pub)' bash /root/provision.sh"
+     "DEPLOY_PUBKEY='$(cat ~/.ssh/nexdoz_deploy.pub)' bash /root/provision.sh"
    ```
 5. **Fill the environment file** on the droplet:
    ```bash
    ssh deploy@DROPLET_IP
-   cd /opt/diabuddy
+   cd /opt/nexdoz
    cp .env.dist .env
    # Use `openssl rand -hex 32` to generate POSTGRES_PASSWORD, ENCRYPTION_KEY,
    # JWT_SECRET, AUTH_SECRET. Set DOMAIN + CADDY_EMAIL to yours.
    nano .env
    ```
-6. **Add GitHub Actions secrets** on `next-trace/diabuddy-infra`:
-   - `SSH_PRIVATE_KEY` — contents of `~/.ssh/diabuddy_deploy`
+6. **Add GitHub Actions secrets** on `next-trace/nexdoz-infra`:
+   - `SSH_PRIVATE_KEY` — contents of `~/.ssh/nexdoz_deploy`
    - `SSH_KNOWN_HOSTS` — output of `ssh-keyscan DROPLET_IP`
    - `DROPLET_HOST` — DROPLET_IP or api.yourdomain.example
    - `PROD_DOMAIN` — yourdomain.example
 7. **Trigger the first deploy**:
    ```bash
-   gh workflow run deploy-prod.yml --repo next-trace/diabuddy-infra
+   gh workflow run deploy-prod.yml --repo next-trace/nexdoz-infra
    ```
 8. **Verify**:
    ```bash
@@ -51,9 +51,9 @@ One public repo, four moving parts:
 
 ## Ongoing deploys
 
-New versions of `diabuddy-user-api` or `diabuddy-web` automatically publish Docker images to `ghcr.io/next-trace/*` on tag push. To roll them out:
+New versions of `nexdoz-user-api` or `nexdoz-web` automatically publish Docker images to `ghcr.io/next-trace/*` on tag push. To roll them out:
 - Option A — bump `USER_API_VERSION` / `WEB_VERSION` in `.env` on the droplet, then re-run `deploy.sh`.
-- Option B — tag `diabuddy-infra` itself (e.g. `v0.1.1`) and the deploy workflow fires automatically.
+- Option B — tag `nexdoz-infra` itself (e.g. `v0.1.1`) and the deploy workflow fires automatically.
 
 ## What this repo does NOT contain
 

@@ -6,11 +6,11 @@
 
 Under **EU Regulation 2017/745 (Medical Device Regulation, MDR)**, software that provides information used for diagnosis, monitoring, prediction, prognosis, or treatment decisions about a physiological condition is a **medical device**. For a chronic condition (diabetes) with treatment implications, the typical classification is **Class IIa or higher** under MDR Rule 11.
 
-**Decision required:** is DiaBuddy going to be marketed as:
+**Decision required:** is Nexdoz going to be marketed as:
 
 ### Option A — "Lifestyle / wellness diary" (NOT a medical device)
 
-DiaBuddy is a personal journal where users log what they eat, what their meter shows, how they feel. It displays their own data back to them. It does NOT:
+Nexdoz is a personal journal where users log what they eat, what their meter shows, how they feel. It displays their own data back to them. It does NOT:
 - recommend insulin doses
 - predict A1C
 - suggest carbohydrate adjustments
@@ -19,11 +19,11 @@ DiaBuddy is a personal journal where users log what they eat, what their meter s
 
 Under this framing, the app is **not** a medical device. It's a consumer wellness product. No CE mark needed. Launch path: straightforward.
 
-**Trade-off:** you lose every feature that actually differentiates DiaBuddy from a spreadsheet. "Meal AI", "meal scan", "clinician summary", "action plans", "recommendations" — all of those trip Rule 11 and force Option B.
+**Trade-off:** you lose every feature that actually differentiates Nexdoz from a spreadsheet. "Meal AI", "meal scan", "clinician summary", "action plans", "recommendations" — all of those trip Rule 11 and force Option B.
 
 ### Option B — Class IIa medical device (CE mark required)
 
-DiaBuddy provides information that influences treatment decisions. Any of the following crosses the line:
+Nexdoz provides information that influences treatment decisions. Any of the following crosses the line:
 - AI-generated meal recommendations tied to glucose patterns
 - Insulin-dose hints
 - "Your A1C will likely be X if trends continue" predictions

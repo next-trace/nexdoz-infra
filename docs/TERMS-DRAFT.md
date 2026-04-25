@@ -6,17 +6,17 @@ _Last updated: PLACEHOLDER_DATE_
 
 ## 1. Who we are
 
-These terms govern your use of DiaBuddy, operated by PLACEHOLDER_LEGAL_ENTITY ("we", "us"), registered in PLACEHOLDER_COUNTRY.
+These terms govern your use of Nexdoz, operated by PLACEHOLDER_LEGAL_ENTITY ("we", "us"), registered in PLACEHOLDER_COUNTRY.
 
-## 2. What DiaBuddy is (and is NOT)
+## 2. What Nexdoz is (and is NOT)
 
-DiaBuddy is a **PLACEHOLDER_CLASSIFICATION** tool:
+Nexdoz is a **PLACEHOLDER_CLASSIFICATION** tool:
 - ☐ A personal health diary (lifestyle/wellness, not a medical device)
 - ☐ A Class IIa medical device (decision-support software under EU MDR Rule 11)
 
-**THIS CHECKBOX MUST BE SET EXPLICITLY.** If DiaBuddy provides clinical recommendations, insulin dose suggestions, A1C predictions, or a "clinician summary" derived from AI, it falls under EU MDR as Class IIa — CE marking is mandatory before offering to real patients. See `docs/MDR-SCOPE-DECISION.md`.
+**THIS CHECKBOX MUST BE SET EXPLICITLY.** If Nexdoz provides clinical recommendations, insulin dose suggestions, A1C predictions, or a "clinician summary" derived from AI, it falls under EU MDR as Class IIa — CE marking is mandatory before offering to real patients. See `docs/MDR-SCOPE-DECISION.md`.
 
-DiaBuddy does **NOT**:
+Nexdoz does **NOT**:
 - Replace your doctor or care team
 - Provide emergency medical advice
 - Diagnose conditions

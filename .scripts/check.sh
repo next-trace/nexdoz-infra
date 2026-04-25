@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local verification for diabuddy-infra.
+# Local verification for nexdoz-infra.
 # Mirrors CI: validate compose file, lint shell scripts.
 
 set -euo pipefail

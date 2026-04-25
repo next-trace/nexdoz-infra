@@ -1,4 +1,4 @@
-# Data Protection Impact Assessment — DiaBuddy
+# Data Protection Impact Assessment — Nexdoz
 
 > Required under GDPR Art. 35 when processing special-category data (Art. 9) on a large scale. To be filled in BEFORE first real patient uses the service.
 
@@ -27,9 +27,9 @@ List every data category, its source, where it lives, who it flows to.
 
 ### 1.3 Technology used
 
-- Go backend (diabuddy-user-api v0.X)
-- Next.js web client (diabuddy-web v0.X)
-- Expo mobile client (diabuddy-mobile v0.X)
+- Go backend (nexdoz-user-api v0.X)
+- Next.js web client (nexdoz-web v0.X)
+- Expo mobile client (nexdoz-mobile v0.X)
 - Postgres 16
 - DigitalOcean droplets, Frankfurt region
 - Optional: OpenAI / Google Gemini / Anthropic Claude for AI features

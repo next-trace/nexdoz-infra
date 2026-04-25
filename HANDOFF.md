@@ -18,8 +18,8 @@ The release workflows published images but the packages default to **private**. 
 
 Verify:
 ```bash
-docker pull ghcr.io/next-trace/nexdoz-user-api:v0.2.0
-docker pull ghcr.io/next-trace/nexdoz-web:v0.1.3
+docker pull ghcr.io/next-trace/nexdoz-user-api:v0.3.1
+docker pull ghcr.io/next-trace/nexdoz-web:v0.2.0
 ```
 
 ### 1.2 DigitalOcean setup
@@ -102,12 +102,13 @@ curl -X POST https://api.yourdomain.example/users \
 
 ## 2. What Claude already did (so you don't redo it)
 
-### Shipped this window
-- `ghcr.io/next-trace/nexdoz-user-api:v0.2.0` — real API (was a Hello-World stub on main before today).
-- `ghcr.io/next-trace/nexdoz-web:v0.1.3` — split-repo layout, logo refresh, Dockerfile fix, publish workflow.
-- `ghcr.io/next-trace/nexdoz-design-system:v0.1.2` — logo smile direction corrected (was a frown at every size).
-- `ghcr.io/next-trace/nexdoz-mobile:v0.1.2` — matching logo refresh + Android mipmap regeneration for all 5 density buckets.
-- `next-trace/nexdoz-infra:v0.1.0` — this repo (compose, Caddy, provision/deploy/backup scripts, compliance drafts).
+### Shipped (latest tags)
+- `ghcr.io/next-trace/nexdoz-user-api:v0.3.1` — real API (was a Hello-World stub before the wip-land); plus the diabuddy → nexdoz module path rename.
+- `ghcr.io/next-trace/nexdoz-web:v0.2.0` — split-repo layout, logo refresh, Dockerfile fix, publish workflow, brand-icon-v2.svg fix, Playwright fixes.
+- `next-trace/nexdoz-design-system:v0.2.0` — logo smile correction + package rename.
+- `next-trace/nexdoz-mobile:v0.2.0` — matching logo refresh, Android mipmap regen, Expo entry-point fix for pnpm node_modules layout, NEXDOZ MOBILE eyebrow.
+- `next-trace/nexdoz-infra:v0.2.0` — this repo (compose, Caddy, provision/deploy/backup scripts, compliance drafts).
+- Library tags: `nexdoz-errors v0.2.0`, `nexdoz-validation v0.2.0`, `nexdoz-logger v0.2.0`, `nexdoz-api-config v0.3.0`, `nexdoz-api-infra v0.3.0`, `nexdoz-testkit v0.3.0`, `nexdoz-email v0.3.1`.
 
 ### Landed security + observability on user-api
 - `/healthz`, `/readyz`, `/metrics` (Prometheus) routes.
@@ -189,7 +190,20 @@ For the ghcr.io images themselves, there is no "unpublish" — roll forward by t
 
 ---
 
-## 6. Emergency contacts / references
+## 6. One-time post-rename cleanup (you-only — token can't, scope mismatch)
+
+When the diabuddy → nexdoz rename landed, GitHub kept the old `ghcr.io/next-trace/diabuddy-*` packages around (rename only renamed the *repo*, not the publish history). Once you've verified the nexdoz-* images deploy fine, delete the abandoned packages so they don't pollute search:
+
+1. https://github.com/orgs/next-trace/packages/container/diabuddy-user-api/settings → **Delete this package** (type `diabuddy-user-api` to confirm).
+2. https://github.com/orgs/next-trace/packages/container/diabuddy-web/settings → same.
+
+Claude's gh token has only `admin:public_key, gist, read:org, repo` — `delete:packages` is needed and cannot be acquired without your authorisation. Hence this is on your list.
+
+**Do NOT do this until** the nexdoz-* images are confirmed running on the droplet. Once deleted there is no undo and CI will need a new publish run to re-create them.
+
+---
+
+## 7. Emergency contacts / references
 
 - **GDPR breach clock**: 72 hours from discovery → notify supervisory authority (`docs/BREACH-PLAYBOOK.md`).
 - **DPO**: not appointed yet — required under GDPR Art. 37 if you process health data systematically (you do). Appoint before private beta.

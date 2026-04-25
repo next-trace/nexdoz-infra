@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DiaBuddy droplet bootstrap script.
+# Nexdoz droplet bootstrap script.
 #
 # Runs ONCE on a fresh Ubuntu 24.04 DO droplet to:
 #   - install docker + compose + minimal ops tools
@@ -7,11 +7,11 @@
 #   - configure fail2ban default jail
 #   - create non-root `deploy` user with sudo + SSH key
 #   - disable root SSH + password auth
-#   - clone diabuddy-infra to /opt/diabuddy
+#   - clone nexdoz-infra to /opt/nexdoz
 #
 # Usage (from your laptop):
 #   scp scripts/provision.sh root@DROPLET_IP:/root/
-#   ssh root@DROPLET_IP DEPLOY_PUBKEY="$(cat ~/.ssh/diabuddy_deploy.pub)" bash /root/provision.sh
+#   ssh root@DROPLET_IP DEPLOY_PUBKEY="$(cat ~/.ssh/nexdoz_deploy.pub)" bash /root/provision.sh
 #
 # After this runs you should be able to:
 #   ssh deploy@DROPLET_IP 'docker --version'
@@ -94,12 +94,12 @@ sed -i -E 's/^#?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/ss
 sed -i -E 's/^#?PermitEmptyPasswords.*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
 systemctl reload ssh
 
-echo "==> clone diabuddy-infra to /opt/diabuddy"
+echo "==> clone nexdoz-infra to /opt/nexdoz"
 mkdir -p /opt
-if [ ! -d /opt/diabuddy ]; then
-  git clone https://github.com/next-trace/diabuddy-infra.git /opt/diabuddy
+if [ ! -d /opt/nexdoz ]; then
+  git clone https://github.com/next-trace/nexdoz-infra.git /opt/nexdoz
 fi
-chown -R deploy:deploy /opt/diabuddy
+chown -R deploy:deploy /opt/nexdoz
 
 echo "==> unattended upgrades"
 systemctl enable unattended-upgrades
@@ -111,12 +111,12 @@ cat <<'EOF'
 Droplet provisioned. Next steps (from your laptop, as the deploy user):
 
   ssh deploy@DROPLET_IP
-  cd /opt/diabuddy
+  cd /opt/nexdoz
   cp .env.dist .env
   nano .env                        # fill every CHANGE_ME_* value
 
 Then trigger the first deploy via the GitHub Actions workflow
-(deploy-prod.yml) on next-trace/diabuddy-infra, or locally:
+(deploy-prod.yml) on next-trace/nexdoz-infra, or locally:
 
   docker compose -f docker-compose.prod.yml pull
   docker compose -f docker-compose.prod.yml up -d

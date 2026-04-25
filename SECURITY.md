@@ -26,7 +26,7 @@ Every secret required to run the stack. None committed to this repo.
 
 - UFW: default deny; allow `22/tcp` (SSH), `80/tcp` (Caddy HTTP-01 + redirect), `443/tcp` (Caddy TLS). Everything else blocked.
 - fail2ban: SSH jail enabled (3 failed attempts → 1h ban).
-- Caddy is the ONLY container with host-port bindings. Postgres, user-api, web communicate only on the `diabuddy_net` bridge.
+- Caddy is the ONLY container with host-port bindings. Postgres, user-api, web communicate only on the `nexdoz_net` bridge.
 - TLS: Caddy auto-provisions Let's Encrypt (HTTP-01 challenge via `:80`). Certs persist in `caddy_data` volume.
 - HTTP → HTTPS: enforced by Caddy automatically.
 
@@ -38,12 +38,12 @@ Every secret required to run the stack. None committed to this repo.
 
 ## Application-layer controls
 
-- Password hashing: bcrypt cost factor 12 (verify in `diabuddy-api-infra/helpers/hasher/password_hasher.go`).
+- Password hashing: bcrypt cost factor 12 (verify in `nexdoz-api-infra/helpers/hasher/password_hasher.go`).
 - JWT: signed with `JWT_SECRET`, short-lived access tokens (15 min), longer refresh (7 days).
 - CSRF: FE web uses double-submit cookie on mutating routes (per project CLAUDE.md).
 - CORS: allow-list origins only — `https://app.${DOMAIN}` from BE.
 - Rate limit on `/auth/login` + `/auth/refresh`: 10 req/min per IP (in-process, to be added if not present).
-- Input validation: `diabuddy-validation` library at command boundary.
+- Input validation: `nexdoz-validation` library at command boundary.
 
 ## Incident response
 
@@ -58,4 +58,4 @@ See `docs/BREACH-PLAYBOOK.md` (draft) for the 72-hour GDPR Art. 33 procedure.
 
 ## Reporting a vulnerability
 
-Until a `security@` address is provisioned, report via GitHub Security Advisory on the affected repo: <https://github.com/next-trace/diabuddy-user-api/security/advisories/new>.
+Until a `security@` address is provisioned, report via GitHub Security Advisory on the affected repo: <https://github.com/next-trace/nexdoz-user-api/security/advisories/new>.

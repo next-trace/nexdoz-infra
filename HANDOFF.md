@@ -1,4 +1,4 @@
-# DiaBuddy — Launch Hand-off
+# Nexdoz — Launch Hand-off
 
 Generated: **2026-04-24**
 Target: **internal-test / dogfood** deployment on DigitalOcean EU.
@@ -13,13 +13,13 @@ Everything Claude can build without your credentials is built and shipping from 
 
 The release workflows published images but the packages default to **private**. Anonymous `docker pull` fails until you flip the switch.
 
-1. https://github.com/orgs/next-trace/packages/container/diabuddy-user-api/settings → **Change visibility** → Public (type `diabuddy-user-api` to confirm).
-2. https://github.com/orgs/next-trace/packages/container/diabuddy-web/settings → same (type `diabuddy-web`).
+1. https://github.com/orgs/next-trace/packages/container/nexdoz-user-api/settings → **Change visibility** → Public (type `nexdoz-user-api` to confirm).
+2. https://github.com/orgs/next-trace/packages/container/nexdoz-web/settings → same (type `nexdoz-web`).
 
 Verify:
 ```bash
-docker pull ghcr.io/next-trace/diabuddy-user-api:v0.2.0
-docker pull ghcr.io/next-trace/diabuddy-web:v0.1.3
+docker pull ghcr.io/next-trace/nexdoz-user-api:v0.2.0
+docker pull ghcr.io/next-trace/nexdoz-web:v0.1.3
 ```
 
 ### 1.2 DigitalOcean setup
@@ -38,24 +38,24 @@ docker pull ghcr.io/next-trace/diabuddy-web:v0.1.3
 ### 1.4 SSH keypair for deployment
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/diabuddy_deploy -N ""
+ssh-keygen -t ed25519 -f ~/.ssh/nexdoz_deploy -N ""
 ```
-Add `~/.ssh/diabuddy_deploy.pub` to the droplet's root `authorized_keys` before running `provision.sh`.
+Add `~/.ssh/nexdoz_deploy.pub` to the droplet's root `authorized_keys` before running `provision.sh`.
 
 ### 1.5 Provision the droplet
 
 ```bash
 scp scripts/provision.sh root@DROPLET_IP:/root/
 ssh root@DROPLET_IP \
-  "DEPLOY_PUBKEY='$(cat ~/.ssh/diabuddy_deploy.pub)' bash /root/provision.sh"
+  "DEPLOY_PUBKEY='$(cat ~/.ssh/nexdoz_deploy.pub)' bash /root/provision.sh"
 ```
-This installs Docker, hardens SSH (no root, no password), sets up UFW + fail2ban, creates a `deploy` user, clones this repo to `/opt/diabuddy`.
+This installs Docker, hardens SSH (no root, no password), sets up UFW + fail2ban, creates a `deploy` user, clones this repo to `/opt/nexdoz`.
 
 ### 1.6 Fill .env on the droplet
 
 ```bash
-ssh -i ~/.ssh/diabuddy_deploy deploy@DROPLET_IP
-cd /opt/diabuddy
+ssh -i ~/.ssh/nexdoz_deploy deploy@DROPLET_IP
+cd /opt/nexdoz
 cp .env.dist .env
 # Generate secrets:
 for k in POSTGRES_PASSWORD ENCRYPTION_KEY JWT_SECRET AUTH_SECRET; do
@@ -68,8 +68,8 @@ Defaults already pin the latest published images: `USER_API_VERSION=v0.2.0`, `WE
 
 ### 1.7 Add GitHub Actions secrets
 
-On https://github.com/next-trace/diabuddy-infra/settings/secrets/actions:
-- `SSH_PRIVATE_KEY` — contents of `~/.ssh/diabuddy_deploy` (whole file including `-----BEGIN ... END ... -----`)
+On https://github.com/next-trace/nexdoz-infra/settings/secrets/actions:
+- `SSH_PRIVATE_KEY` — contents of `~/.ssh/nexdoz_deploy` (whole file including `-----BEGIN ... END ... -----`)
 - `SSH_KNOWN_HOSTS` — output of `ssh-keyscan DROPLET_IP`
 - `DROPLET_HOST` — DROPLET_IP or `api.yourdomain.example`
 - `PROD_DOMAIN` — your domain root (`yourdomain.example`)
@@ -77,7 +77,7 @@ On https://github.com/next-trace/diabuddy-infra/settings/secrets/actions:
 ### 1.8 First deploy
 
 ```bash
-gh workflow run deploy-prod.yml --repo next-trace/diabuddy-infra
+gh workflow run deploy-prod.yml --repo next-trace/nexdoz-infra
 ```
 Watch it in the Actions tab. The workflow SSHes to the droplet, pulls images, restarts the stack, polls `/healthz` for 60s.
 
@@ -103,15 +103,15 @@ curl -X POST https://api.yourdomain.example/users \
 ## 2. What Claude already did (so you don't redo it)
 
 ### Shipped this window
-- `ghcr.io/next-trace/diabuddy-user-api:v0.2.0` — real API (was a Hello-World stub on main before today).
-- `ghcr.io/next-trace/diabuddy-web:v0.1.3` — split-repo layout, logo refresh, Dockerfile fix, publish workflow.
-- `ghcr.io/next-trace/diabuddy-design-system:v0.1.2` — logo smile direction corrected (was a frown at every size).
-- `ghcr.io/next-trace/diabuddy-mobile:v0.1.2` — matching logo refresh + Android mipmap regeneration for all 5 density buckets.
-- `next-trace/diabuddy-infra:v0.1.0` — this repo (compose, Caddy, provision/deploy/backup scripts, compliance drafts).
+- `ghcr.io/next-trace/nexdoz-user-api:v0.2.0` — real API (was a Hello-World stub on main before today).
+- `ghcr.io/next-trace/nexdoz-web:v0.1.3` — split-repo layout, logo refresh, Dockerfile fix, publish workflow.
+- `ghcr.io/next-trace/nexdoz-design-system:v0.1.2` — logo smile direction corrected (was a frown at every size).
+- `ghcr.io/next-trace/nexdoz-mobile:v0.1.2` — matching logo refresh + Android mipmap regeneration for all 5 density buckets.
+- `next-trace/nexdoz-infra:v0.1.0` — this repo (compose, Caddy, provision/deploy/backup scripts, compliance drafts).
 
 ### Landed security + observability on user-api
 - `/healthz`, `/readyz`, `/metrics` (Prometheus) routes.
-- `diabuddylogger.NewFromEnv()` at boot — **fails fast** if `LOGGER_SINK=betterstack` and no token.
+- `nexdozlogger.NewFromEnv()` at boot — **fails fast** if `LOGGER_SINK=betterstack` and no token.
 - bcrypt cost **12** (was `bcrypt.DefaultCost` = 10).
 - Auth rate limit on `/auth/login` + `/auth/refresh` — env-configurable:
   - `AUTH_RATE_LIMIT_PER_MINUTE` (default 10, 0 disables)
@@ -144,7 +144,7 @@ curl -X POST https://api.yourdomain.example/users \
 ### 3.3 Engineering follow-ups
 - `GET /users/{id}/export` — GDPR Art. 15 / 20 data-export endpoint. Not implemented.
 - `notification-icon.png` on mobile ships as a coloured mark; Android wants a white silhouette. Pre-existing; tracked in the mobile PR notes.
-- No `mipmap-anydpi-v26/ic_launcher.xml` adaptive-icon descriptor in diabuddy-mobile. MIUI and modern Android apply their own masking — not broken, but not as polished as dedicated foreground/background layers.
+- No `mipmap-anydpi-v26/ic_launcher.xml` adaptive-icon descriptor in nexdoz-mobile. MIUI and modern Android apply their own masking — not broken, but not as polished as dedicated foreground/background layers.
 - `rate_limit_test.go` unit coverage for the new middleware.
 - Web api-client regeneration against user-api's post-v0.2.0 OpenAPI spec (wip branch added 29 new YAML fragments).
 - `.plan/production-readiness-and-digitalocean-launch-20260424.md` Phase 5 "Prometheus /metrics + request-histogram" landed via the wip merge, but the specific `http_request_duration_seconds` histogram + `http_requests_total` counter enumeration should be verified against any Grafana/Better Stack dashboard you wire up.
@@ -162,7 +162,7 @@ If a deploy goes sideways:
 
 ```bash
 ssh deploy@DROPLET_IP
-cd /opt/diabuddy
+cd /opt/nexdoz
 # Flip image tag back
 sed -i 's/^USER_API_VERSION=.*/USER_API_VERSION=v0.1.1/' .env   # or previous known-good
 docker compose -f docker-compose.prod.yml pull

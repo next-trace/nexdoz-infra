@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DiaBuddy deploy script — runs on the droplet (via SSH from CI or a laptop).
+# Nexdoz deploy script — runs on the droplet (via SSH from CI or a laptop).
 #
 # Usage (local, from a laptop that already has SSH access to the droplet):
 #   ssh deploy@DROPLET_HOST 'bash -s' < scripts/deploy.sh
@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-REPO_DIR=${DIABUDDY_INFRA_DIR:-/opt/diabuddy}
+REPO_DIR=${NEXDOZ_INFRA_DIR:-/opt/nexdoz}
 COMPOSE_FILE="$REPO_DIR/docker-compose.prod.yml"
 
 cd "$REPO_DIR"

@@ -16,12 +16,15 @@ concurrency:
 jobs:
   validate:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, do-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Validate docker-compose file
+        env:
+          # The runner slot exports COMPOSE_PROJECT_NAME=ciSlot<N>, which compose rejects (uppercase).
+          COMPOSE_PROJECT_NAME: nexdoz-infra-ci
         run: |
           # Need a minimal .env for compose to resolve variables during `config`.
           cp .env.dist .env

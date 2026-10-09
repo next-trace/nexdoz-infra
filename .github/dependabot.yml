@@ -1,0 +1,14 @@
+# Managed by the NextTrace CI standards (ci-workflows). Weekly, minor and patch updates grouped.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]

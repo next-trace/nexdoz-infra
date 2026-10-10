@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # Only what this workflow validates; docs and notes cannot break compose or the scripts.
+    paths: ['docker-compose*.yml', 'Caddyfile', 'scripts/**', '.scripts/**', '.env.dist', '.github/workflows/ci.yml']
   pull_request:
     branches: [main]
 

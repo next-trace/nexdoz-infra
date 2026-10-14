@@ -14,7 +14,54 @@ permissions:
   contents: read
 
 jobs:
+  # What a deploy applies is only what the droplet reads from this repo after `git pull`:
+  # docker-compose.prod.yml, the Caddyfile it mounts, scripts/, and the .env.dist variable template.
+  # A tag that changes none of those (docs, workflow edits, notes) would pull and restart the same
+  # stack, so skip it. A manual run (workflow_dispatch) always deploys: compose images default to
+  # :latest, and re-deploying to pick up new app images is a deliberate gesture with no repo change.
+  changes:
+    runs-on: [self-hosted, linux, x64, do-runner]
+    timeout-minutes: 10
+    outputs:
+      deploy: ${{ steps.filter.outputs.deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Does this tag change anything the deploy applies?
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "push" ]; then
+            echo "Manual run: deploying."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          prev=$(git tag --list 'v*' | sort -V | grep -x -B1 "$GITHUB_REF_NAME" | head -1)
+          if [ -z "$prev" ] || [ "$prev" = "$GITHUB_REF_NAME" ]; then
+            echo "No earlier tag: deploying."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "$prev" "$GITHUB_SHA")
+          if [ -z "$changed" ]; then
+            echo "$GITHUB_REF_NAME has the same content as $prev (re-tag): deploying."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          relevant=$(printf '%s\n' "$changed" | grep -Ec '^docker-compose[^/]*\.ya?ml$|^Caddyfile$|^scripts/|^\.env\.dist$' || true)
+          if [ "${relevant:-0}" -gt 0 ]; then
+            echo "$relevant deploy-relevant file(s) changed since $prev: deploying."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Nothing the deploy applies changed since $prev (only docs, workflow or notes): skipping. Run this workflow manually to redeploy anyway."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
     timeout-minutes: 60
     runs-on: ubuntu-latest
     environment: production

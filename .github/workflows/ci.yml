@@ -7,22 +7,28 @@ on:
     paths: ['docker-compose*.yml', 'Caddyfile', 'scripts/**', '.scripts/**', '.env.dist', '.github/workflows/ci.yml']
   pull_request:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 jobs:
-  summary:
-    name: CI Summary
+  checks:
+    name: Infrastructure Checks
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, do-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Validate docker-compose file
         env:
@@ -48,3 +54,19 @@ jobs:
             caddy validate --config Caddyfile --adapter caddyfile \
             --envfile .env 2>&1 || true
           # Caddyfile cannot be fully validated without real TLS + DNS; soft-pass.
+
+  summary:
+    name: CI Summary
+    needs: checks
+    if: always()
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require infrastructure checks to pass
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+        run: |
+          set -euo pipefail
+          printf '## CI results\n\n| Job | Result |\n| --- | --- |\n| checks | %s |\n' "${CHECKS_RESULT}" >> "$GITHUB_STEP_SUMMARY"
+          test "${CHECKS_RESULT}" = success

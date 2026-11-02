@@ -23,8 +23,8 @@ jobs:
     name: Infrastructure Checks
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 60
-    # Match the labels registered on the shared DigitalOcean pool exactly.
-    runs-on: [self-hosted, Linux, X64, do-runner]
+    # Keep admission on the stable labels shared by every DigitalOcean pool slot.
+    runs-on: [self-hosted, do-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
-    # Only what this workflow validates; docs and notes cannot break compose or the scripts.
-    paths: ['docker-compose*.yml', 'Caddyfile', 'scripts/**', '.scripts/**', '.env.dist', '.github/workflows/ci.yml']
+    paths:
+      - 'docker-compose*.yml'
+      - 'Caddyfile'
+      - 'scripts/**'
+      - '.scripts/**'
+      - '.env.dist'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
   merge_group:
@@ -14,16 +19,15 @@ on:
 permissions:
   contents: read
 
+# A newer commit for the same PR/branch supersedes the older run immediately.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Infrastructure Checks
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 60
-    # Bind explicitly to the shared DigitalOcean runner group.
+  ci:
+    name: CI
+    timeout-minutes: 45
     runs-on:
       group: ci-pool
       labels: [self-hosted, Linux, X64, do-runner]
@@ -31,45 +35,99 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Validate docker-compose file
+      - name: Determine validation scope
+        id: scope
         env:
-          # The runner slot exports COMPOSE_PROJECT_NAME=ciSlot<N>, which compose rejects (uppercase).
-          COMPOSE_PROJECT_NAME: nexdoz-infra-ci
-        run: |
-          # Need a minimal .env for compose to resolve variables during `config`.
-          cp .env.dist .env
-          sed -i 's|CHANGE_ME_32_BYTE_HEX|placeholder|g' .env
-          docker compose -f docker-compose.prod.yml config > /dev/null
-
-      - name: Shellcheck
-        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # master
-        with:
-          scandir: ./scripts
-          severity: warning
-          ignore_names: ''
-          format: gcc
-
-      - name: Caddyfile lint
-        run: |
-          docker run --rm -v "$PWD":/work -w /work caddy:2-alpine \
-            caddy validate --config Caddyfile --adapter caddyfile \
-            --envfile .env 2>&1 || true
-          # Caddyfile cannot be fully validated without real TLS + DNS; soft-pass.
-
-  summary:
-    name: CI Summary
-    needs: checks
-    if: always()
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    permissions: {}
-    steps:
-      - name: Require infrastructure checks to pass
-        env:
-          CHECKS_RESULT: ${{ needs.checks.result }}
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          printf '## CI results\n\n| Job | Result |\n| --- | --- |\n| checks | %s |\n' "${CHECKS_RESULT}" >> "$GITHUB_STEP_SUMMARY"
-          test "${CHECKS_RESULT}" = success
+          if [ "$EVENT" = workflow_dispatch ] || [ "$EVENT" = merge_group ]; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          printf 'Changed files:\n%s\n' "${changed:-<none>}"
+          if printf '%s\n' "$changed" | grep -Eq '^(docker-compose[^/]*\.ya?ml|Caddyfile|scripts/|\.scripts/|\.env\.dist|\.github/workflows/ci\.yml)'; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare shared validation inputs
+        if: steps.scope.outputs.run == 'true'
+        env:
+          COMPOSE_PROJECT_NAME: nexdoz-infra-ci
+        run: |
+          set -euo pipefail
+          cp .env.dist .env
+          sed -i 's|CHANGE_ME_32_BYTE_HEX|placeholder|g' .env
+          # Pull validation images once; checks below only consume these images.
+          docker pull caddy:2-alpine
+          docker pull koalaman/shellcheck:v0.10.0
+
+      - name: Run infrastructure checks in parallel
+        if: steps.scope.outputs.run == 'true'
+        env:
+          COMPOSE_PROJECT_NAME: nexdoz-infra-ci
+        run: |
+          set -uo pipefail
+          mkdir -p .ci-logs
+
+          docker compose -f docker-compose.prod.yml config >.ci-logs/compose.log 2>&1 &
+          compose_pid=$!
+
+          docker run --rm -v "$PWD":/work -w /work caddy:2-alpine \
+            caddy validate --config Caddyfile --adapter caddyfile --envfile .env \
+            >.ci-logs/caddy.log 2>&1 &
+          caddy_pid=$!
+
+          (
+            shellcheck_failed=0
+            for file in scripts/*.sh; do
+              docker run --rm -v "$PWD":/mnt koalaman/shellcheck:v0.10.0 \
+                --severity=warning --format=gcc "/mnt/$file" || shellcheck_failed=1
+            done
+            exit "$shellcheck_failed"
+          ) >.ci-logs/shellcheck.log 2>&1 &
+          shellcheck_pid=$!
+
+          failed=0
+          for check in compose caddy shellcheck; do
+            case "$check" in
+              compose) pid=$compose_pid; log=.ci-logs/compose.log ;;
+              caddy) pid=$caddy_pid; log=.ci-logs/caddy.log ;;
+              shellcheck) pid=$shellcheck_pid; log=.ci-logs/shellcheck.log ;;
+            esac
+            if ! wait "$pid"; then
+              failed=1
+              echo "::error::$check validation failed"
+              sed -n '1,240p' "$log"
+            else
+              echo "$check validation passed"
+            fi
+          done
+          exit "$failed"
+
+      - name: CI summary
+        if: always()
+        env:
+          RUN_VALIDATION: ${{ steps.scope.outputs.run }}
+          JOB_RESULT: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          {
+            echo '## CI results'
+            echo
+            echo '| Stage | Result |'
+            echo '| --- | --- |'
+            if [ "${RUN_VALIDATION:-false}" = true ]; then
+              echo "| Infrastructure checks | ${JOB_RESULT} |"
+            else
+              echo '| Infrastructure checks | skipped (docs-only change) |'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

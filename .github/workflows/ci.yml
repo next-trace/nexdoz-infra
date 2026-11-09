@@ -61,9 +61,7 @@ jobs:
 
       - name: Set up Gitleaks
         if: steps.scope.outputs.scope != 'docs'
-        uses: next-trace/ci-workflows/.github/actions/setup-gitleaks@f8d714598e61b9b81e6e0645051f0d8d6e0d2b5e # v0.1.8
-        with:
-          version: 8.21.2
+        run: bash .github/scripts/install-gitleaks.sh
 
       - name: Scan repository for secrets (CI-only changes)
         id: gitleaks_ci
@@ -93,13 +91,7 @@ jobs:
       - name: Run infrastructure and security checks
         id: checks
         if: steps.scope.outputs.scope == 'full'
-        uses: next-trace/ci-workflows/.github/actions/run-parallel@f8d714598e61b9b81e6e0645051f0d8d6e0d2b5e # v0.1.8
-        with:
-          max-parallel: '2'
-          task-timeout-seconds: '1800'
-          tasks: |
-            infrastructure= docker compose -f docker-compose.prod.yml config >/dev/null && docker run --rm -v "$PWD":/work -w /work caddy:2-alpine caddy validate --config Caddyfile --adapter caddyfile --envfile .env && for file in scripts/*.sh; do docker run --rm -v "$PWD":/mnt koalaman/shellcheck:v0.10.0 --severity=warning --format=gcc "/mnt/$file"; bash -n "$file"; done
-            security= trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 caddy:2-alpine && trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 postgres:16-alpine && gitleaks detect --source . --redact --no-banner
+        run: bash .github/scripts/run-validation-parallel.sh
 
       - name: CI summary
         if: always()

@@ -3,13 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'docker-compose*.yml'
-      - 'Caddyfile'
-      - 'scripts/**'
-      - '.scripts/**'
-      - '.env.dist'
-      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
   merge_group:
@@ -19,7 +12,7 @@ on:
 permissions:
   contents: read
 
-# A newer commit for the same PR/branch supersedes the older run immediately.
+# Keep only the latest validation for a PR branch; don't cancel another branch's work.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -43,81 +36,70 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          if [ "$EVENT" = workflow_dispatch ] || [ "$EVENT" = merge_group ]; then
-            echo 'run=true' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
-          printf 'Changed files:\n%s\n' "${changed:-<none>}"
-          if printf '%s\n' "$changed" | grep -Eq '^(docker-compose[^/]*\.ya?ml|Caddyfile|scripts/|\.scripts/|\.env\.dist|\.github/workflows/ci\.yml)'; then
-            echo 'run=true' >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT" == workflow_dispatch || "$EVENT" == merge_group ]]; then
+            scope=full
           else
-            echo 'run=false' >> "$GITHUB_OUTPUT"
+            scope="$(bash .github/scripts/classify-ci-scope.sh "$BASE_SHA" "$HEAD_SHA")"
           fi
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          echo "Validation scope: $scope"
 
-      - name: Prepare shared validation inputs
-        if: steps.scope.outputs.run == 'true'
+      - name: Test validation scope classifier
+        run: bash scripts/test-ci-scope.sh
+
+      - name: Set up actionlint
+        if: steps.scope.outputs.scope != 'docs'
+        run: bash .github/scripts/install-actionlint.sh
+
+      - name: Lint GitHub Actions workflows
+        id: actionlint
+        if: steps.scope.outputs.scope != 'docs'
+        run: actionlint -config-file .github/actionlint.yaml .github/workflows/ci.yml .github/workflows/deploy-prod.yml
+
+      - name: Set up Gitleaks
+        if: steps.scope.outputs.scope != 'docs'
+        run: bash .github/scripts/install-gitleaks.sh
+
+      - name: Scan repository for secrets (CI-only changes)
+        id: gitleaks_ci
+        if: steps.scope.outputs.scope == 'ci'
+        run: gitleaks detect --source . --redact --no-banner
+
+      - name: Prepare infrastructure validation inputs
+        if: steps.scope.outputs.scope == 'full'
         env:
           COMPOSE_PROJECT_NAME: nexdoz-infra-ci
         run: |
           set -euo pipefail
           cp .env.dist .env
-          sed -i 's|CHANGE_ME_32_BYTE_HEX|placeholder|g' .env
-          # Pull validation images once; checks below only consume these images.
+          sed -i 's|CHANGE_ME_32_BYTE_HEX|0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef|g' .env
+          # Pull each validation image once; all parallel tasks consume the local images.
           docker pull caddy:2-alpine
+          docker pull postgres:16-alpine
           docker pull koalaman/shellcheck:v0.10.0
 
-      - name: Run infrastructure checks in parallel
-        if: steps.scope.outputs.run == 'true'
-        env:
-          COMPOSE_PROJECT_NAME: nexdoz-infra-ci
-        run: |
-          set -uo pipefail
-          mkdir -p .ci-logs
+      - name: Set up Trivy
+        if: steps.scope.outputs.scope == 'full'
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: 0.76.2
+          cache: true
 
-          docker compose -f docker-compose.prod.yml config >.ci-logs/compose.log 2>&1 &
-          compose_pid=$!
-
-          docker run --rm -v "$PWD":/work -w /work caddy:2-alpine \
-            caddy validate --config Caddyfile --adapter caddyfile --envfile .env \
-            >.ci-logs/caddy.log 2>&1 &
-          caddy_pid=$!
-
-          (
-            shellcheck_failed=0
-            for file in scripts/*.sh; do
-              docker run --rm -v "$PWD":/mnt koalaman/shellcheck:v0.10.0 \
-                --severity=warning --format=gcc "/mnt/$file" || shellcheck_failed=1
-            done
-            exit "$shellcheck_failed"
-          ) >.ci-logs/shellcheck.log 2>&1 &
-          shellcheck_pid=$!
-
-          failed=0
-          for check in compose caddy shellcheck; do
-            case "$check" in
-              compose) pid=$compose_pid; log=.ci-logs/compose.log ;;
-              caddy) pid=$caddy_pid; log=.ci-logs/caddy.log ;;
-              shellcheck) pid=$shellcheck_pid; log=.ci-logs/shellcheck.log ;;
-            esac
-            if ! wait "$pid"; then
-              failed=1
-              echo "::error::$check validation failed"
-              sed -n '1,240p' "$log"
-            else
-              echo "$check validation passed"
-            fi
-          done
-          exit "$failed"
+      - name: Run infrastructure and security checks
+        id: checks
+        if: steps.scope.outputs.scope == 'full'
+        run: bash .github/scripts/run-validation-parallel.sh
 
       - name: CI summary
         if: always()
         env:
-          RUN_VALIDATION: ${{ steps.scope.outputs.run }}
-          JOB_RESULT: ${{ job.status }}
+          SCOPE: ${{ steps.scope.outputs.scope }}
+          ACTIONLINT_RESULT: ${{ steps.actionlint.outcome }}
+          GITLEAKS_RESULT: ${{ steps.gitleaks_ci.outcome }}
+          CHECKS_RESULT: ${{ steps.checks.outcome }}
         run: |
           set -euo pipefail
           {
@@ -125,9 +107,23 @@ jobs:
             echo
             echo '| Stage | Result |'
             echo '| --- | --- |'
-            if [ "${RUN_VALIDATION:-false}" = true ]; then
-              echo "| Infrastructure checks | ${JOB_RESULT} |"
-            else
-              echo '| Infrastructure checks | skipped (docs-only change) |'
-            fi
+            echo "| Scope | ${SCOPE:-not determined} |"
+            case "${SCOPE:-unknown}" in
+              docs)
+                echo '| Workflow lint | skipped (documentation-only change) |'
+                echo '| Secret scan | skipped (documentation-only change) |'
+                echo '| Infrastructure, tests and vulnerability checks | skipped (documentation-only change) |'
+                ;;
+              ci)
+                echo "| Workflow lint | ${ACTIONLINT_RESULT:-not run} |"
+                echo "| Secret scan | ${GITLEAKS_RESULT:-not run} |"
+                echo '| Infrastructure, tests and image vulnerability checks | skipped (CI-only change) |'
+                ;;
+              full)
+                echo "| Workflow lint | ${ACTIONLINT_RESULT:-not run} |"
+                echo '| Secret scan | included in bounded security task |'
+                echo "| Infrastructure and image vulnerability checks | ${CHECKS_RESULT:-not run} |"
+                ;;
+              *) echo '| Scope classification | failed; validation did not complete |' ;;
+            esac
           } >> "$GITHUB_STEP_SUMMARY"

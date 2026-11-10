@@ -22,8 +22,9 @@ infra_pid=$!
 (
   set -uo pipefail
   failed=0
-  trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 caddy:2-alpine || failed=1
-  trivy image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 postgres:16-alpine || failed=1
+  for image in caddy:2-alpine postgres:16-alpine koalaman/shellcheck:v0.10.0; do
+    trivy image --scanners vuln --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --exit-code 1 "$image" || failed=1
+  done
   gitleaks detect --source . --redact --no-banner || failed=1
   exit "$failed"
 ) >"$security_log" 2>&1 &

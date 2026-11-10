@@ -20,7 +20,7 @@ git diff --no-ext-diff --name-only -z "$base_sha" "$head_sha" > "$changed_paths"
 scope=docs
 while IFS= read -r -d '' path; do
   case "$path" in
-    .github/scripts/*|.github/workflows/ci.yml|scripts/test-ci-scope.sh)
+    .github/scripts/*|.github/workflows/ci.yml|scripts/test-ci-scope.sh|docker/caddy/Dockerfile|docker/postgres/Dockerfile)
       scope=full
       ;;
     .github/*|.gitleaks.toml|scripts/ci-*)

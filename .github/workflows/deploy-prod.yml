@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  # What a deploy applies is only what the droplet reads from this repo after `git pull`:
-  # docker-compose.prod.yml, the Caddyfile it mounts, scripts/, and the .env.dist variable template.
+  # What a deploy applies is what the droplet reads from this repo after `git pull`:
+  # Compose, docker/ runtime image definitions, Caddyfile, scripts, and .env.dist.
   # A tag that changes none of those (docs, workflow edits, notes) would pull and restart the same
   # stack, so skip it. A manual run (workflow_dispatch) always deploys: compose images default to
   # :latest, and re-deploying to pick up new app images is a deliberate gesture with no repo change.
@@ -50,7 +50,7 @@ jobs:
             echo "$GITHUB_REF_NAME has the same content as $prev (re-tag): deploying."
             echo "deploy=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          relevant=$(printf '%s\n' "$changed" | grep -Ec '^docker-compose[^/]*\.ya?ml$|^Caddyfile$|^scripts/|^\.env\.dist$' || true)
+          relevant=$(printf '%s\n' "$changed" | grep -Ec '^docker-compose[^/]*\.ya?ml$|^docker/|^Caddyfile$|^scripts/|^\.env\.dist$' || true)
           if [ "${relevant:-0}" -gt 0 ]; then
             echo "$relevant deploy-relevant file(s) changed since $prev: deploying."
             echo "deploy=true" >> "$GITHUB_OUTPUT"

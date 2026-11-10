@@ -116,10 +116,9 @@ Droplet provisioned. Next steps (from your laptop, as the deploy user):
   nano .env                        # fill every CHANGE_ME_* value
 
 Then trigger the first deploy via the GitHub Actions workflow
-(deploy-prod.yml) on next-trace/nexdoz-infra, or locally:
+(deploy-prod.yml) on next-trace/nexdoz-infra, or from your laptop:
 
-  docker compose -f docker-compose.prod.yml pull
-  docker compose -f docker-compose.prod.yml up -d
+  ssh deploy@DROPLET_IP 'cd /opt/nexdoz && bash scripts/deploy.sh'
 
 Verify:
   curl -sf https://api.${DOMAIN}/healthz

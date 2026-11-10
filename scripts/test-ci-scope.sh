@@ -43,11 +43,14 @@ expect_scope full .github/workflows/ci.yml
 expect_scope ci .github/dependabot.yml
 expect_scope full .github/scripts/install-actionlint.sh
 expect_scope full .github/scripts/install-gitleaks.sh
+expect_scope full .github/scripts/install-shellcheck.sh
 expect_scope full .github/scripts/run-validation-parallel.sh
 expect_scope full .github/scripts/classify-ci-scope.sh
 expect_scope full scripts/test-ci-scope.sh
 expect_scope ci .gitleaks.toml
 expect_scope full docker-compose.prod.yml
+expect_scope full docker/postgres/Dockerfile
+expect_scope full docker/caddy/Dockerfile
 expect_scope full Caddyfile
 expect_scope full .env.dist
 expect_scope full scripts/deploy.sh

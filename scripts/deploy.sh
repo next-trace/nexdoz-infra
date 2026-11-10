@@ -17,10 +17,27 @@ echo "==> git pull"
 git pull --ff-only origin main
 
 echo "==> docker compose pull"
-docker compose -f "$COMPOSE_FILE" pull
+docker compose -f "$COMPOSE_FILE" pull --ignore-buildable
 
-echo "==> docker compose up -d"
-docker compose -f "$COMPOSE_FILE" up -d
+trivy_image='ghcr.io/aquasecurity/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb'
+echo "==> pull pinned Trivy scanner"
+docker pull "$trivy_image"
+
+echo "==> build fresh runtime images from official bases"
+docker compose -f "$COMPOSE_FILE" build --pull --no-cache caddy postgres
+
+echo "==> scan runtime images at every severity"
+for image in nexdoz-caddy:2.11.9-hardened nexdoz-postgres:16.15-alpine3.24-hardened; do
+  docker run --rm \
+    --env TMPDIR=/root/.cache \
+    --volume /var/run/docker.sock:/var/run/docker.sock \
+    --volume nexdoz-trivy-cache:/root/.cache \
+    "$trivy_image" image --scanners vuln \
+      --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --exit-code 1 "$image"
+done
+
+echo "==> start services after security gate"
+docker compose -f "$COMPOSE_FILE" up -d --no-build
 
 echo "==> waiting for user-api /healthz"
 for attempt in $(seq 1 30); do

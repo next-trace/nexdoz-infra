@@ -10,7 +10,10 @@ name: nexdoz
 
 services:
   caddy:
-    image: caddy:2-alpine
+    image: nexdoz-caddy:2.11.9-hardened
+    build:
+      context: .
+      dockerfile: docker/caddy/Dockerfile
     container_name: nexdoz-caddy
     restart: unless-stopped
     ports:
@@ -108,7 +111,10 @@ services:
       - nexdoz_net
 
   postgres:
-    image: postgres:16-alpine
+    image: nexdoz-postgres:16.15-alpine3.24-hardened
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
     container_name: nexdoz-postgres
     restart: unless-stopped
     environment:

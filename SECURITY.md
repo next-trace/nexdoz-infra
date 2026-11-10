@@ -34,7 +34,7 @@ Every secret required to run the stack. None committed to this repo.
 
 - Go: `govulncheck ./...` runs in each BE repo's CI (TODO — to be added if not present).
 - Node/pnpm: `pnpm audit --prod` — manual for now, Dependabot to be enabled per-repo.
-- Docker images: base images (`golang:1.26-alpine`, `node:22-alpine`, `postgres:16-alpine`, `caddy:2-alpine`, `alpine:latest`) rebuilt monthly via a scheduled workflow (TODO).
+- Docker images: production Caddy and PostgreSQL runtime images are built from digest-pinned Docker Official images. CI refreshes Alpine security packages, applies pinned upstream Go dependency fixes for Caddy, replaces PostgreSQL's outdated bundled `gosu`, and scans both final images for vulnerabilities at every severity. Any finding fails full validation.
 
 ## Application-layer controls
 

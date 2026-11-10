@@ -76,17 +76,27 @@ jobs:
           set -euo pipefail
           cp .env.dist .env
           sed -i 's|CHANGE_ME_32_BYTE_HEX|0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef|g' .env
-          # Pull each validation image once; all parallel tasks consume the local images.
-          docker pull caddy:2-alpine
-          docker pull postgres:16-alpine
-          docker pull koalaman/shellcheck:v0.10.0
+          # Pull official bases once; build the two patched runtime images once for all checks.
+          caddy_image="nexdoz-caddy:ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          postgres_image="nexdoz-postgres:ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "NEXDOZ_CADDY_CI_IMAGE=$caddy_image" >> "$GITHUB_ENV"
+          echo "NEXDOZ_POSTGRES_CI_IMAGE=$postgres_image" >> "$GITHUB_ENV"
+          docker pull caddy:2.11.9-alpine
+          docker pull caddy:2.11.9-builder-alpine
+          docker pull postgres:16.15-alpine3.24
+          docker build --no-cache -t "$caddy_image" -f docker/caddy/Dockerfile .
+          docker build --no-cache -t "$postgres_image" -f docker/postgres/Dockerfile .
 
       - name: Set up Trivy
         if: steps.scope.outputs.scope == 'full'
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
-          version: 0.76.2
+          version: v0.76.2
           cache: true
+
+      - name: Set up ShellCheck
+        if: steps.scope.outputs.scope == 'full'
+        run: bash .github/scripts/install-shellcheck.sh
 
       - name: Run infrastructure and security checks
         id: checks
@@ -127,3 +137,13 @@ jobs:
               *) echo '| Scope classification | failed; validation did not complete |' ;;
             esac
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary validation images
+        if: always() && steps.scope.outputs.scope == 'full'
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          docker image rm --force "nexdoz-caddy:ci-${RUN_ID}-${RUN_ATTEMPT}" >/dev/null 2>&1 || true
+          docker image rm --force "nexdoz-postgres:ci-${RUN_ID}-${RUN_ATTEMPT}" >/dev/null 2>&1 || true

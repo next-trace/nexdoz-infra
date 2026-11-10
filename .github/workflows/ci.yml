@@ -85,7 +85,7 @@ jobs:
         if: steps.scope.outputs.scope == 'full'
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
-          version: 0.76.2
+          version: v0.76.2
           cache: true
 
       - name: Run infrastructure and security checks
